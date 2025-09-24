@@ -30,7 +30,7 @@ def main() -> None:
     parser.add_argument("--wibo-path", type=Path, default=Path("wibo"))
     parser.add_argument("--asm-dir-prefix", type=Path)
     parser.add_argument("--macro-inc-path", type=Path)
-    parser.add_argument("--target-encoding", type=str)
+    parser.add_argument("--target-encoding", type=str, default="utf-8")
     parser.add_argument("--src-dir", type=Path)
 
     args, c_flags = parser.parse_known_args()
