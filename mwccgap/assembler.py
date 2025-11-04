@@ -78,7 +78,7 @@ class Assembler:
                         f"Failed to reencode {asm_filepath} (iconv returned {result.returncode})"
                     )
                 in_path = Path(localfile.name)
-                print(asm_filepath.read_bytes())
+                #print(asm_filepath.read_bytes())
 
             with subprocess.Popen(
                 cmd,
@@ -87,7 +87,7 @@ class Assembler:
                 stderr=subprocess.PIPE,
             ) as process:
                 in_bytes = in_path.read_bytes()
-                print(in_bytes)
+                #print(in_bytes)
                 if len(in_bytes) == 0:
                     raise AssemblerException(f"{asm_filepath}: file empty!")
                 if self.macro_inc_path and self.macro_inc_path.is_file():
@@ -106,11 +106,11 @@ class Assembler:
                     )
 
             obj_bytes = temp_file.read()
-            print(obj_bytes)
+            #print(obj_bytes)
 
         if len(obj_bytes) == 0:
             raise AssemblerException(
                 f"Failed to assemble {asm_filepath} (object is empty)"
             )
-        print(len(obj_bytes))
+        #print(len(obj_bytes))
         return obj_bytes

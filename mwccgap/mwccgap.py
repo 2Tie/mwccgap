@@ -98,7 +98,7 @@ def process_c_file(
         function = asm_file.stem
 
         asm_bytes = assembler.assemble_file(asm_file, c_file_encoding)
-        print(f"asm_bytes resulted: {len(asm_bytes)}")
+        #print(f"asm_bytes resulted: {len(asm_bytes)}")
         assembled_elf = Elf(asm_bytes)
 
         asm_functions = assembled_elf.get_functions()
@@ -188,9 +188,17 @@ def process_c_file(
 
         initial_sh_info_value = compiled_elf.symtab.sh_info
         local_syms_inserted = 0
-
+        print(len(relocation_records))
+        print(relocation_records)
         # assumes .text relocations precede .rodata relocations
         for i, relocation_record in enumerate(relocation_records):
+            print("")
+            print(len(relocation_record.relocations))
+            #print(relocation_record.relocations)
+            for r in relocation_record.relocations:
+                print(f"  {assembled_elf.symtab.symbols[r.symbol_index].name}")
+            print(compiled_elf.sections[relocation_record.sh_link].name)
+            print(assembled_elf.symtab.symbols[relocation_record.relocations[0].symbol_index].name)
             relocation_record.sh_link = compiled_elf.symtab_index
             if has_text and i == 0:
                 relocation_record.sh_name = rel_text_sh_name

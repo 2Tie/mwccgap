@@ -65,7 +65,8 @@ class Preprocessor:
                     continue
                 if line.startswith(".size"):
                     continue
-
+                if line.startswith("enddlabel") or line.startswith("nonmatching"):
+                    continue
                 if line.startswith("glabel") or line.startswith("dlabel") or line.startswith(".fn") or line.startswith(".obj"):
                     _, current_symbol = line.removesuffix(LOCAL_SUFFIX).split(" ")
                     is_local = (
@@ -103,9 +104,9 @@ class Preprocessor:
                 if " .asciz " in line:
                     *_, text = line.split(" .asciz ")
                     text = text.strip()
-                    print(function_name)
-                    print(ast.literal_eval(text))
-                    print(encoding)
+                    #print(function_name)
+                    #print(ast.literal_eval(text))
+                    #print(encoding)
                     rodata_entries[current_symbol].size += (
                         len(ast.literal_eval(text).encode(encoding)) + 1
                     )  # NUL terminator
@@ -132,6 +133,12 @@ class Preprocessor:
                 continue
             if line.startswith("glabel") or line.startswith("jlabel") or line.startswith(".fn") or line.startswith(".obj"):
                 # ignore function / jumptable labels
+                continue
+            if line.startswith("endlabel") or line.startswith("enddlabel"):
+                # ignore function / symbol ends
+                continue
+            if line.startswith("nonmatching"):
+                # ignore non matching marker
                 continue
             if (line.startswith(".L") or line.startswith("L")) and line.endswith(":"):
                 # ignore labels
