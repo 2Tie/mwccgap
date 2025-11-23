@@ -108,6 +108,8 @@ def process_c_file(
         asm_text = asm_functions[0].data
         has_text = len(asm_text) > 0
 
+        rel_rodata_sh_name = None
+
         if has_text:
             # identify the .text section for this function
             for text_section_index, text_section in enumerate(compiled_elf.sections):
@@ -118,16 +120,18 @@ def process_c_file(
                     break
             else:
                 raise Exception(f"{function} not found in {c_file}")
-
+            #print(f"text section is {text_section_index}")
             # assumption is that .rodata will immediately follow the .text section
             rodata_section_indices = []
             if num_rodata_symbols > 0:
+                print("rodata present in text file")
                 for i, section in enumerate(
                     compiled_elf.sections[text_section_index + 1 :]
                 ):
                     if section.name == ".rodata":
                         # found some .rodata before another .text section
                         rodata_section_indices.append(text_section_index + 1 + i)
+                        print(f"rodata found at section {i}")
                         if len(rodata_section_indices) == num_rodata_symbols:
                             # reached end of rodata sections for this text section
                             break
@@ -145,6 +149,7 @@ def process_c_file(
                 idx is not None
             ), f"Could not find .rodata section for symbol '{function}'"
             rodata_section_indices = [idx]
+            print(f"rodata only, at section {idx}")
 
         if has_text:
             # transplant .text section data from assembled object
@@ -152,11 +157,12 @@ def process_c_file(
 
             assert (
                 len(asm_text) >= compiled_function_length
-            ), f"Not enough assembly to fill {function} in {c_file}"
+            ), f"Not enough assembly to fill {function} in {c_file}: len of asm is {len(asm_text)} and compiled length is {compiled_function_length}"
 
             text_section.data = asm_text[:compiled_function_length]
 
         if num_rodata_symbols > 0:
+            #print("nu print rodata present")
             assert (
                 len(assembled_elf.rodata_sections) == 1
             ), f"Expected ASM to contain 1 .rodata section, found {len(assembled_elf.rodata_sections)}"
@@ -176,27 +182,40 @@ def process_c_file(
                 # force 4-byte alignment for .rodata sections (defaults to 16-byte)
                 compiled_elf.sections[idx].sh_addralign = 2  # 1 << 2 = 4
 
+            print("adding sh symbol for rel rodata")
             rel_rodata_sh_name = compiled_elf.add_sh_symbol(".rel.rodata")
 
         relocation_records = assembled_elf.get_relocations()
-        assert (
-            len(relocation_records) < 3
-        ), f"{asm_file} has too many relocation records!"
+        #assert (
+        #    len(relocation_records) < 3
+        #), f"{asm_file} has too many relocation records!"
 
         reloc_symbols = set()
 
         initial_sh_info_value = compiled_elf.symtab.sh_info
         local_syms_inserted = 0
 
+        print(f"working on {asm_file}")
+        print(f"num of records: {len(relocation_records)}")
+        print(relocation_records)
+
         # assumes .text relocations precede .rodata relocations
         for i, relocation_record in enumerate(relocation_records):
+            print("")
+            print(f"num of relocs: {len(relocation_record.relocations)}")
+            for r in relocation_record.relocations:
+                print(f"  {assembled_elf.symtab.symbols[r.symbol_index].name}")
             relocation_record.sh_link = compiled_elf.symtab_index
-            if has_text and i == 0:
+            if has_text and i == text_section_index:
+                print(rel_text_sh_name)
                 relocation_record.sh_name = rel_text_sh_name
                 relocation_record.sh_info = text_section_index
-            else:
+            elif rel_rodata_sh_name is not None:
                 relocation_record.sh_name = rel_rodata_sh_name
                 relocation_record.sh_info = rodata_section_indices[0]
+            print(f"record sh name: {compiled_elf.shstrtab.get_symbol_by_index(relocation_record.sh_name)}")
+            if not compiled_elf.shstrtab.get_symbol_by_index(relocation_record.sh_name).startswith(".rel."):
+              continue
 
             for relocation in relocation_record.relocations:
                 symbol = assembled_elf.symtab.symbols[relocation.symbol_index]
@@ -204,7 +223,7 @@ def process_c_file(
                 if symbol.bind == 0:
                     local_syms_inserted += 1
 
-                if has_text and i == 0:
+                if has_text and i == text_section_index:
                     force = False
                 else:
                     force = True
@@ -212,7 +231,7 @@ def process_c_file(
                 relocation.symbol_index = compiled_elf.add_symbol(symbol, force=force)
                 reloc_symbols.add(symbol.name)
 
-                if has_text and i == 1:
+                if has_text and i == 1 and rel_rodata_sh_name is not None:
                     # repoint .rodata reloc to .text section
                     symbol.st_shndx = text_section_index
 
