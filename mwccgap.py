@@ -34,8 +34,15 @@ def main() -> None:
     parser.add_argument("--src-dir", type=Path)
 
     args, c_flags = parser.parse_known_args()
+    sdataflag = [flag for flag in c_flags if "-sdatathreshold " in flag]
+    sdatasize = "0" #if none found, default to zero
+    if(len(sdataflag) > 1):
+      print("multiple smalldata threshold flags found, defaulting to first")
+    elif(len(sdataflag) == 1):
+      sdatasize = sdataflag[0][16:]
+      print(f"sdata found: {sdatasize}")
 
-    as_flags = ["-G0"]  # TODO: base this on -sdatathreshold value from c_flags
+    as_flags = [f"-G{sdatasize}", "-mno-pdr"]  # pdr section currently confuses mwccgap, as it generates an additional reloc record
 
     try:
         with tempfile.NamedTemporaryFile(suffix=".c", dir=args.src_dir) as temp_c_file:
