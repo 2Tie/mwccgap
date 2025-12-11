@@ -30,7 +30,7 @@ def main() -> None:
     parser.add_argument("--wibo-path", type=Path, default=Path("wibo"))
     parser.add_argument("--asm-dir-prefix", type=Path)
     parser.add_argument("--macro-inc-path", type=Path)
-    parser.add_argument("--target-encoding", type=str)
+    parser.add_argument("--target-encoding", type=str, default="utf-8")
     parser.add_argument("--src-dir", type=Path)
 
     args, c_flags = parser.parse_known_args()
@@ -38,7 +38,7 @@ def main() -> None:
     sdatasize = "0" #if none found, default to zero
     if(len(sdataflag) > 1):
       print("multiple smalldata threshold flags found, defaulting to first")
-    elif(len(sdataflag) == 1):
+    if(len(sdataflag) >= 1):
       sdatasize = sdataflag[0][16:]
       print(f"sdata found: {sdatasize}")
 

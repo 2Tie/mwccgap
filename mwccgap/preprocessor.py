@@ -36,6 +36,7 @@ class Preprocessor:
     def preprocess_s_file(
         function_name: str,
         textio: TextIO,
+        encoding: str,
     ) -> tuple[list[str], Dict[str, Symbol]]:
         # mwcc creates a .rodata section per rodata symbol so we need to track them individually
         rodata_entries: Dict[str, Symbol] = {}
@@ -106,14 +107,16 @@ class Preprocessor:
                     *_, text = line.split(" .ascii ")
                     text = text.strip()
                     rodata_entries[current_symbol].size += len(
-                        ast.literal_eval(text)
+                        ast.literal_eval(text).encode(encoding)
                     )  # no NUL terminator
                     continue
                 if " .asciz " in line:
                     *_, text = line.split(" .asciz ")
                     text = text.strip()
+                    strlen = len(ast.literal_eval(text).encode(encoding)) + 1
+                    strlen += 4 - (strlen % 4) #round up to nearest mult of four, temp fix for multiple asciz in a single symbol
                     rodata_entries[current_symbol].size += (
-                        len(ast.literal_eval(text)) + 1
+                        strlen
                     )  # NUL terminator
                     continue
 
@@ -188,6 +191,7 @@ class Preprocessor:
     def preprocess_c_file(
         self,
         textio: TextIO,
+        encoding: str,
     ) -> tuple[list[str], list[tuple[Path, int]]]:
         out_lines: list[str] = []
         asm_files: list[tuple[Path, int]] = []
@@ -229,6 +233,7 @@ class Preprocessor:
                         new_lines, rodata_entries = Preprocessor.preprocess_s_file(
                             f"{FUNCTION_PREFIX}{asm_file.stem}",
                             f,
+                            encoding,
                         )
                 except Exception as e:
                     raise Exception(f"Failed to preprocess {asm_file}: {e}") from None

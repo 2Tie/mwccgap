@@ -48,7 +48,7 @@ def process_c_file(
 
     # 2. identify all INCLUDE_ASM statements and replace with asm statements full of nops
     with c_file.open("r", encoding="utf-8") as f:
-        out_lines, asm_files = Preprocessor(asm_dir_prefix).preprocess_c_file(f)
+        out_lines, asm_files = Preprocessor(asm_dir_prefix).preprocess_c_file(f, c_file_encoding)
 
     # filter out functions that can be found in the compiled c object
     asm_files = [(x, y) for (x, y) in asm_files if x.stem not in c_functions]
@@ -97,7 +97,7 @@ def process_c_file(
     for asm_file, num_rodata_symbols in asm_files:
         function = asm_file.stem
 
-        asm_bytes = assembler.assemble_file(asm_file)
+        asm_bytes = assembler.assemble_file(asm_file, c_file_encoding)
         assembled_elf = Elf(asm_bytes)
 
         asm_functions = assembled_elf.get_functions()
@@ -152,7 +152,7 @@ def process_c_file(
 
             assert (
                 len(asm_text) >= compiled_function_length
-            ), f"Not enough assembly to fill {function} in {c_file}"
+            ), f"Not enough assembly to fill {function} in {c_file}: len of asm is {len(asm_text)} and compiled length is {compiled_function_length}"
 
             text_section.data = asm_text[:compiled_function_length]
 
